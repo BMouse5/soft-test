@@ -127,8 +127,8 @@ const handleTypeChange = (id: string, value: AccountType) => {
 
     .col-labels { width: 25%; }
     .col-type { width: 15%; }
-    .col-login { width: 27.5%; }
-    .col-password { width: 27.5%; }
+    .col-login { width: 30%; }
+    .col-password { width: 30%; }
     .col-actions { width: 5%; }
 
     .delete-icon-cell {

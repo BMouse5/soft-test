@@ -5,7 +5,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import AccountEditor from './views/AccountEditor.vue';
 </script>
 
