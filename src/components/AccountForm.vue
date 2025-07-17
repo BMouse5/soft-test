@@ -25,7 +25,7 @@
                     <td>
                         <n-select
                             :value="account.type"
-                            @update:value="(value: AccountType) => store.updateAccountField(account.id, 'type', value)"
+                            @update:value="(value: AccountType) => handleTypeChange(account.id, value)"
                             :options="typeOptions"
                         />
                     </td>
@@ -88,7 +88,7 @@ const typeOptions = ref([
 const labelInputValues = ref<Record<string, string>>({});
 
 const labelsToString = (labels: Label[]): string => {
-    const account = accounts.value.find(acc => acc.labels === labels);
+    const account = accounts.value.find(i => i.labels === labels);
     if (account && labelInputValues.value[account.id] !== undefined) {
         return labelInputValues.value[account.id];
     }
@@ -102,8 +102,14 @@ const handleLabelInput = (id: string, value: string) => {
 const handleLabelBlur = (id: string) => {
     if (labelInputValues.value[id] !== undefined) {
         store.updateAccountLabels(id, labelInputValues.value[id]);
+        store.validateAndSave(id);
         delete labelInputValues.value[id];
     }
+}
+
+const handleTypeChange = (id: string, value: AccountType) => {
+    store.updateAccountField(id, 'type', value);
+    store.validateAndSave(id);
 }
 </script>
 

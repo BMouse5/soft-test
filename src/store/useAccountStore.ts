@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 import type { Account, Label } from '../types/account'
 
 const parseLabels = (labelsString: string): Label[] => {
@@ -12,9 +12,14 @@ const parseLabels = (labelsString: string): Label[] => {
 
 export const useAccountStore = defineStore('accounts', () => {
   const accounts = ref<Account[]>([])
-
+  
   const saveToLocalStorage = () => {
-    localStorage.setItem('accounts-state', JSON.stringify(accounts.value))
+    const validAccounts = toRaw(accounts.value).filter(i => {
+      const isLoginValid = !!i.login?.trim();
+      const isPasswordValid = i.type === 'LDAP' || (i.type === 'Local' && !!i.password?.trim());
+      return isLoginValid && isPasswordValid;
+    });
+    localStorage.setItem('accounts-state', JSON.stringify(validAccounts))
   }
   
   const loadFromLocalStorage = () => {
@@ -36,20 +41,19 @@ export const useAccountStore = defineStore('accounts', () => {
         password: false,
       },
     })
-    saveToLocalStorage()
   }
 
   const deleteAccount = (id: string) => {
-    accounts.value = accounts.value.filter(acc => acc.id !== id)
+    accounts.value = accounts.value.filter(i => i.id !== id)
     saveToLocalStorage()
   }
+
   const validateAndSave = (id: string) => {
-    const account = accounts.value.find(acc => acc.id === id)
+    const account = accounts.value.find(i => i.id === id)
     if (!account) return
-    account.errors = {
-      login: !account.login?.trim(),
-      password: account.type === 'Local' ? !account.password?.trim() : false,
-    }
+
+    account.errors.login = !account.login?.trim();
+    account.errors.password = account.type === 'Local' ? !account.password?.trim() : false;
 
     const isValid = !account.errors.login && !account.errors.password
     if (isValid) {
@@ -58,26 +62,22 @@ export const useAccountStore = defineStore('accounts', () => {
   }
 
   const updateAccountField = <K extends keyof Account>(id: string, field: K, value: Account[K]) => {
-    const account = accounts.value.find(acc => acc.id === id)
+    const account = accounts.value.find(i => i.id === id)
     if (!account) return
+    
+    account[field] = value
 
     if (field === 'type' && value === 'LDAP') {
       account.password = null
       account.errors.password = false;
     }
-
-    account[field] = value
-
-    validateAndSave(id)
   }
 
   const updateAccountLabels = (id: string, labelsString: string) => {
-    const account = accounts.value.find(acc => acc.id === id)
+    const account = accounts.value.find(i => i.id === id)
     if (!account) return
-
+    
     account.labels = parseLabels(labelsString)
-
-    saveToLocalStorage()
   }
 
   return {
