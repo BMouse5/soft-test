@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Account, Label, AccountType } from '../types/account'
+import type { Account, Label } from '../types/account'
 
 const parseLabels = (labelsString: string): Label[] => {
   return labelsString
@@ -16,7 +16,7 @@ export const useAccountStore = defineStore('accounts', () => {
   const saveToLocalStorage = () => {
     localStorage.setItem('accounts-state', JSON.stringify(accounts.value))
   }
-
+  
   const loadFromLocalStorage = () => {
     const data = localStorage.getItem('accounts-state')
     if (data) {
@@ -43,28 +43,9 @@ export const useAccountStore = defineStore('accounts', () => {
     accounts.value = accounts.value.filter(acc => acc.id !== id)
     saveToLocalStorage()
   }
-
-  const updateAccountField = <K extends keyof Account>(id: string, field: K, value: Account[K]) => {
+  const validateAndSave = (id: string) => {
     const account = accounts.value.find(acc => acc.id === id)
     if (!account) return
-
-    if (field === 'type' && value === 'LDAP') {
-      account.password = null
-    }
-
-    account[field] = value
-    validateAndSave(account)
-  }
-
-  const updateAccountLabels = (id: string, labelsString: string) => {
-    const account = accounts.value.find(acc => acc.id === id)
-    if (!account) return
-
-    account.labels = parseLabels(labelsString)
-    validateAndSave(account)
-  }
-
-  const validateAndSave = (account: Account) => {
     account.errors = {
       login: !account.login?.trim(),
       password: account.type === 'Local' ? !account.password?.trim() : false,
@@ -76,6 +57,29 @@ export const useAccountStore = defineStore('accounts', () => {
     }
   }
 
+  const updateAccountField = <K extends keyof Account>(id: string, field: K, value: Account[K]) => {
+    const account = accounts.value.find(acc => acc.id === id)
+    if (!account) return
+
+    if (field === 'type' && value === 'LDAP') {
+      account.password = null
+      account.errors.password = false;
+    }
+
+    account[field] = value
+
+    validateAndSave(id)
+  }
+
+  const updateAccountLabels = (id: string, labelsString: string) => {
+    const account = accounts.value.find(acc => acc.id === id)
+    if (!account) return
+
+    account.labels = parseLabels(labelsString)
+
+    saveToLocalStorage()
+  }
+
   return {
     accounts,
     addAccount,
@@ -83,5 +87,6 @@ export const useAccountStore = defineStore('accounts', () => {
     updateAccountField,
     updateAccountLabels,
     loadFromLocalStorage,
+    validateAndSave
   }
 })
