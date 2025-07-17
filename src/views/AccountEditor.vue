@@ -2,7 +2,7 @@
     <div class="account-editor">
         <div class="add-account">
             Учетные записи
-            <n-button rect>
+            <n-button rect @click="accountStore.addAccount">
                 <template #icon>
                     <n-icon size="30">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
@@ -29,7 +29,15 @@
 </template>
 
 <script setup lang="ts">
+import { useAccountStore } from '../store/useAccountStore';
 import AccountForm from '../components/AccountForm.vue';
+import { onMounted } from 'vue';
+
+const accountStore = useAccountStore()
+
+onMounted(() => {
+    accountStore.loadFromLocalStorage()
+})
 </script>
 
 <style scoped lang="scss">

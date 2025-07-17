@@ -1,53 +1,87 @@
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import type { Account, Label, AccountType } from '../types/account'
 
-export interface Label {
-  text: string
+const parseLabels = (labelsString: string): Label[] => {
+  return labelsString
+    .split(';')
+    .map(label => label.trim())
+    .filter(Boolean)
+    .map(text => ({ text }))
 }
 
-export type AccountType = 'LDAP' | 'Локальная'
+export const useAccountStore = defineStore('accounts', () => {
+  const accounts = ref<Account[]>([])
 
-export interface Account {
-  id: string
-  labels: Label[]
-  type: AccountType
-  login: string
-  password: string | null
-  isValid: boolean
-}
+  const saveToLocalStorage = () => {
+    localStorage.setItem('accounts-state', JSON.stringify(accounts.value))
+  }
 
-export const useAccountStore = defineStore('account', {
-  state: () => ({
-    accounts: [] as Account[],
-  }),
-  actions: {
-    loadFromLocalStorage() {
-      const data = localStorage.getItem('accounts')
-      if (data) this.accounts = JSON.parse(data)
-    },
-    saveToLocalStorage() {
-      localStorage.setItem('accounts', JSON.stringify(this.accounts))
-    },
-    addAccount() {
-      this.accounts.push({
-        id: crypto.randomUUID(),
-        labels: [],
-        type: 'LDAP',
-        login: '',
-        password: null,
-        isValid: false,
-      })
-      this.saveToLocalStorage()
-    },
-    updateAccount(id: string, updated: Partial<Account>) {
-      const index = this.accounts.findIndex(a => a.id === id)
-      if (index !== -1) {
-        this.accounts[index] = { ...this.accounts[index], ...updated }
-        this.saveToLocalStorage()
-      }
-    },
-    deleteAccount(id: string) {
-      this.accounts = this.accounts.filter(a => a.id !== id)
-      this.saveToLocalStorage()
+  const loadFromLocalStorage = () => {
+    const data = localStorage.getItem('accounts-state')
+    if (data) {
+      accounts.value = JSON.parse(data)
     }
+  }
+
+  const addAccount = () => {
+    accounts.value.push({
+      id: crypto.randomUUID(),
+      labels: [],
+      type: 'Local',
+      login: '',
+      password: '',
+      errors: {
+        login: false,
+        password: false,
+      },
+    })
+    saveToLocalStorage()
+  }
+
+  const deleteAccount = (id: string) => {
+    accounts.value = accounts.value.filter(acc => acc.id !== id)
+    saveToLocalStorage()
+  }
+
+  const updateAccountField = <K extends keyof Account>(id: string, field: K, value: Account[K]) => {
+    const account = accounts.value.find(acc => acc.id === id)
+    if (!account) return
+
+    if (field === 'type' && value === 'LDAP') {
+      account.password = null
+    }
+
+    account[field] = value
+    validateAndSave(account)
+  }
+
+  const updateAccountLabels = (id: string, labelsString: string) => {
+    const account = accounts.value.find(acc => acc.id === id)
+    if (!account) return
+
+    account.labels = parseLabels(labelsString)
+    validateAndSave(account)
+  }
+
+  const validateAndSave = (account: Account) => {
+    account.errors = {
+      login: !account.login?.trim(),
+      password: account.type === 'Local' ? !account.password?.trim() : false,
+    }
+
+    const isValid = !account.errors.login && !account.errors.password
+    if (isValid) {
+      saveToLocalStorage()
+    }
+  }
+
+  return {
+    accounts,
+    addAccount,
+    deleteAccount,
+    updateAccountField,
+    updateAccountLabels,
+    loadFromLocalStorage,
   }
 })
